@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="mRemoteNGpasswordsStealer",
-    version="1.0.0",
+    version="1.0.1",
     py_modules=["mRemoteNGpasswordsStealer"],
     install_requires=["PythonToolsKit", "pycryptodome"],
     author="Maurice Lambert",

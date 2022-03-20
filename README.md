@@ -35,7 +35,7 @@ chmod u+x mRemoteNGpasswordsStealer.pyz
 python3 -m mRemoteNGpasswordsStealer
 
 # Entry point (console)
-RemotePasswordsStealer -p mR3m -f C:\Users\Marine\AppData\Roaming\mRemoteNG\confCons.xml.20160622-0935582042.backup
+RemotePasswordsStealer -c -p mR3m -f C:\Users\Marine\AppData\Roaming\mRemoteNG\confCons.xml.20160622-0935582042.backup
 ```
 
 ### Python script
@@ -43,19 +43,18 @@ RemotePasswordsStealer -p mR3m -f C:\Users\Marine\AppData\Roaming\mRemoteNG\conf
 ```python
 from mRemoteNGpasswordsStealer import Stealer
 stealer = Stealer()
-stealer = Stealer("mR3m", r"C:\\Users\\Marine\\AppData\\Roaming\\mRemoteNG\\confCons.xml.20160622-0935582042.backup")
-for host, user, password in stealer.parser():
+stealer = Stealer("mRemoteNG_passwords", "mR3m", r"C:\Users\Marine\AppData\Roaming\mRemoteNG\confCons.xml.20160622-*.backup", True)
+for host, user, password in stealer.parse_all():
     print(host, user, password)
 
 stealer.success_coutner
-
 stealer.errors_counter
 ```
 
 ## Help
 
 ```text
-~# python3 mRemoteNGpasswordsStealer.py -h
+~# python mRemoteNGpasswordsStealer.py -h
 
 usage: mRemoteNGpasswordsStealer.py [-h] [-p PASSWORD] [-f FILE]
 
@@ -66,6 +65,10 @@ optional arguments:
   -p PASSWORD, --password PASSWORD
                         mRemoteNG master password.
   -f FILE, --file FILE  mRemoteNG configuration file.
+  -c, --copy, --copy-config
+                        Copy mRemoteNG configuration file.
+  -e EXPORT, --export EXPORT, --export-file EXPORT
+                        Export filename.
 ```
 
 ## Links
@@ -73,6 +76,7 @@ optional arguments:
  - [Github Page](https://github.com/mauricelambert/mRemoteNGpasswordsStealer/)
  - [Documentation](https://mauricelambert.github.io/info/python/security/mRemoteNGpasswordsStealer.html)
  - [Download as python executable](https://mauricelambert.github.io/info/python/security/mRemoteNGpasswordsStealer.pyz)
+ - [Windows Executables](https://github.com/mauricelambert/mRemoteNGpasswordsStealer/releases)
 
 ## Licence
 
